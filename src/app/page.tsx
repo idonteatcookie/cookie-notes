@@ -5,7 +5,8 @@ import Calendar from './components/Calendar';
 import NoteEditor from './components/NoteEditor';
 import TodoList from './components/TodoList';
 import EventDialog from './components/EventDialog';
-import { format, differenceInDays, isToday, isTomorrow, isFuture } from 'date-fns';
+import ReportDialog from './components/ReportDialog';
+import { format, differenceInDays, isToday, isTomorrow, isFuture, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import * as storage from '../lib/storage';
 
@@ -23,6 +24,26 @@ export default function Home() {
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<storage.Event | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [isWeeklyReportOpen, setIsWeeklyReportOpen] = useState(false);
+  const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
+  const [weeklyData, setWeeklyData] = useState<{
+    notes: storage.Note[];
+    todos: storage.Todo[];
+    events: storage.Event[];
+  }>({
+    notes: [],
+    todos: [],
+    events: [],
+  });
+  const [monthlyData, setMonthlyData] = useState<{
+    notes: storage.Note[];
+    todos: storage.Todo[];
+    events: storage.Event[];
+  }>({
+    notes: [],
+    todos: [],
+    events: [],
+  });
 
   useEffect(() => {
     setIsClient(true);
@@ -152,6 +173,78 @@ export default function Home() {
     setSelectedDate(new Date());
   };
 
+  const loadWeeklyData = () => {
+    if (!isClient) return;
+    
+    const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+    const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
+    
+    const weeklyNotes: storage.Note[] = [];
+    const weeklyTodos: storage.Todo[] = [];
+    const weeklyEvents: storage.Event[] = [];
+    
+    days.forEach(day => {
+      const note = storage.getNote(day);
+      if (note) weeklyNotes.push(note);
+      
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const allTodos = storage.loadTodos();
+      const todosForDate = allTodos.filter(todo => todo.date === dateStr);
+      weeklyTodos.push(...todosForDate);
+      
+      const events = storage.getEvents(day);
+      weeklyEvents.push(...events);
+    });
+    
+    setWeeklyData({
+      notes: weeklyNotes,
+      todos: weeklyTodos,
+      events: weeklyEvents,
+    });
+  };
+
+  const handleOpenWeeklyReport = () => {
+    loadWeeklyData();
+    setIsWeeklyReportOpen(true);
+  };
+
+  const loadMonthlyData = () => {
+    if (!isClient) return;
+    
+    const monthStart = startOfMonth(selectedDate);
+    const monthEnd = endOfMonth(selectedDate);
+    const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+    
+    const monthlyNotes: storage.Note[] = [];
+    const monthlyTodos: storage.Todo[] = [];
+    const monthlyEvents: storage.Event[] = [];
+    
+    days.forEach(day => {
+      const note = storage.getNote(day);
+      if (note) monthlyNotes.push(note);
+      
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const allTodos = storage.loadTodos();
+      const todosForDate = allTodos.filter(todo => todo.date === dateStr);
+      monthlyTodos.push(...todosForDate);
+      
+      const events = storage.getEvents(day);
+      monthlyEvents.push(...events);
+    });
+    
+    setMonthlyData({
+      notes: monthlyNotes,
+      todos: monthlyTodos,
+      events: monthlyEvents,
+    });
+  };
+
+  const handleOpenMonthlyReport = () => {
+    loadMonthlyData();
+    setIsMonthlyReportOpen(true);
+  };
+
   if (!isClient) {
     return <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white" />;
   }
@@ -195,13 +288,19 @@ export default function Home() {
               </svg>
               <span>今天</span>
             </button>
-            <button className="h-[60px] px-3 bg-white rounded-xl shadow-soft text-xs text-secondary-600 hover:text-primary-500 transition-colors flex flex-col items-center justify-center gap-0.5">
+            <button
+              onClick={handleOpenWeeklyReport}
+              className="h-[60px] px-3 bg-white rounded-xl shadow-soft text-xs text-secondary-600 hover:text-primary-500 transition-colors flex flex-col items-center justify-center gap-0.5"
+            >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <span>周报</span>
             </button>
-            <button className="h-[60px] px-3 bg-white rounded-xl shadow-soft text-xs text-secondary-600 hover:text-primary-500 transition-colors flex flex-col items-center justify-center gap-0.5">
+            <button
+              onClick={handleOpenMonthlyReport}
+              className="h-[60px] px-3 bg-white rounded-xl shadow-soft text-xs text-secondary-600 hover:text-primary-500 transition-colors flex flex-col items-center justify-center gap-0.5"
+            >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
@@ -318,6 +417,24 @@ export default function Home() {
         date={selectedDate}
         mode={selectedEvent ? 'edit' : 'add'}
         initialEvent={selectedEvent ?? undefined}
+      />
+      <ReportDialog
+        isOpen={isWeeklyReportOpen}
+        onClose={() => setIsWeeklyReportOpen(false)}
+        date={selectedDate}
+        notes={weeklyData.notes}
+        todos={weeklyData.todos}
+        events={weeklyData.events}
+        type="week"
+      />
+      <ReportDialog
+        isOpen={isMonthlyReportOpen}
+        onClose={() => setIsMonthlyReportOpen(false)}
+        date={selectedDate}
+        notes={monthlyData.notes}
+        todos={monthlyData.todos}
+        events={monthlyData.events}
+        type="month"
       />
     </div>
   );
