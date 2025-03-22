@@ -56,7 +56,7 @@ export default function Calendar({
   };
 
   return (
-    <div className="w-full bg-white rounded-xl p-4">
+    <div className="w-full">
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={prevMonth}
@@ -126,8 +126,8 @@ export default function Calendar({
               onClick={() => onDateSelect(day)}
               onContextMenu={(e) => onDateContextMenu(day, e)}
               className={`
-                relative p-2 text-sm rounded-lg transition-all
-                ${isSelected ? 'ring-2 ring-primary-400' : 'hover:bg-primary-50'}
+                relative p-2 text-sm transition-all
+                ${isSelected ? 'bg-primary-50 text-primary-600 font-medium' : 'hover:bg-primary-50'}
                 ${!isCurrentMonth && 'text-secondary-300'}
               `}
             >

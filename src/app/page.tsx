@@ -322,7 +322,7 @@ export default function Home() {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-4 space-y-4">
-            <div className="bg-white rounded-xl p-4">
+            <div className="bg-white rounded-xl shadow-soft p-4">
               <Calendar
                 selectedDate={selectedDate}
                 onDateSelect={handleDateSelect}
