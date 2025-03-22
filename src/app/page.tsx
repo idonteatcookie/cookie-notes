@@ -1,103 +1,311 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import Calendar from './components/Calendar';
+import NoteEditor from './components/NoteEditor';
+import TodoList from './components/TodoList';
+import EventDialog from './components/EventDialog';
+import { format, differenceInDays, isToday, isTomorrow, isFuture } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
+import * as storage from '../lib/storage';
+
+const getEventTextColorClass = (bgColorClass: string | undefined) => {
+  if (!bgColorClass) return 'text-secondary-600';
+  return bgColorClass.replace('bg-', 'text-');
+};
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [note, setNote] = useState<storage.Note | null>(null);
+  const [todos, setTodos] = useState<storage.Todo[]>([]);
+  const [events, setEvents] = useState<storage.Event[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<storage.Event[]>([]);
+  const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<storage.Event | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (isClient) {
+      loadDayData();
+      loadUpcomingEvents();
+    }
+  }, [selectedDate, isClient]);
+
+  const loadDayData = () => {
+    if (!isClient) return;
+    
+    // 加载日记
+    const currentNote = storage.getNote(selectedDate);
+    setNote(currentNote);
+    
+    // 加载特殊事件
+    const currentEvents = storage.getEvents(selectedDate);
+    setEvents(currentEvents);
+    
+    // 加载待办事项
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const allTodos = storage.loadTodos();
+    const todosForDate = allTodos.filter(todo => todo.date === dateStr);
+    setTodos(todosForDate);
+  };
+
+  const loadUpcomingEvents = () => {
+    if (!isClient) return;
+    const allEvents = storage.loadEvents();
+    const today = new Date();
+    const futureEvents = allEvents
+      .filter((event) => {
+        const eventDate = new Date(event.date);
+        return isToday(eventDate) || isFuture(eventDate);
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    setUpcomingEvents(futureEvents);
+  };
+
+  const formatEventDate = (dateStr: string) => {
+    const eventDate = new Date(dateStr);
+    const today = new Date();
+    
+    if (isToday(eventDate)) {
+      return '今天';
+    }
+    if (isTomorrow(eventDate)) {
+      return '明天';
+    }
+
+    const daysLeft = differenceInDays(eventDate, today);
+    return `${format(eventDate, 'MM.dd', { locale: zhCN })}（${daysLeft}天后）`;
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+  };
+
+  const handleDateContextMenu = (date: Date, event: React.MouseEvent) => {
+    event.preventDefault();
+    setSelectedDate(date);
+    setIsEventDialogOpen(true);
+  };
+
+  const handleNoteSave = (content: string) => {
+    if (!isClient) return;
+    storage.saveNote(content, selectedDate);
+    loadDayData();
+  };
+
+  const handleAddTodo = (content: string, date: Date) => {
+    if (!isClient) return;
+    const newTodo = storage.saveTodo(content, date);
+    setTodos([...todos, newTodo]);
+    loadDayData();
+  };
+
+  const handleToggleTodo = (id: string) => {
+    if (!isClient) return;
+    storage.toggleTodo(id);
+    setTodos(storage.loadTodos());
+    loadDayData();
+  };
+
+  const handleDeleteTodo = (id: string) => {
+    if (!isClient) return;
+    storage.deleteTodo(id);
+    setTodos(storage.loadTodos());
+    loadDayData();
+  };
+
+  const handleEditTodo = (id: string, content: string, date: Date) => {
+    if (!isClient) return;
+    storage.editTodo(id, content, date);
+    setTodos(storage.loadTodos());
+    loadDayData();
+  };
+
+  const handleAddEvent = (event: Omit<storage.Event, 'id' | 'createdAt'>) => {
+    if (!isClient) return;
+    if (selectedEvent) {
+      storage.editEvent(selectedEvent.id, event.title, new Date(event.date), event.color);
+    } else {
+      storage.addEvent(event.title, new Date(event.date), event.color);
+    }
+    loadDayData();
+    loadUpcomingEvents();
+    setSelectedEvent(null);
+  };
+
+  const handleEditEvent = (event: storage.Event) => {
+    setSelectedEvent(event);
+    setIsEventDialogOpen(true);
+  };
+
+  const hasContent = (date: Date) => {
+    if (!isClient) return { events: [] };
+    const events = storage.getEvents(date);
+    return { events };
+  };
+
+  if (!isClient) {
+    return <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white" />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white">
+      <main className="container mx-auto px-4 py-6 max-w-6xl">
+        <div className="flex gap-4 mb-6">
+          <div className="max-h-[100px] bg-white rounded-xl shadow-soft p-2.5 overflow-y-auto flex-1 max-w-[600px]">
+            <div className="space-y-0.5">
+              {upcomingEvents.map((event) => (
+                <div
+                  key={event.id}
+                  className="grid grid-cols-[1.5rem,6rem,1fr] items-center"
+                >
+                  <div className="flex items-center justify-center">
+                    <div className={`w-1.5 h-1.5 rounded-full ${event.color || 'bg-secondary-400'}`} />
+                  </div>
+                  <div className="text-xs text-secondary-500">
+                    {formatEventDate(event.date)}
+                  </div>
+                  <div className="text-xs text-secondary-700 truncate pr-2">
+                    {event.title}
+                  </div>
+                </div>
+              ))}
+              {upcomingEvents.length === 0 && (
+                <div className="py-2 flex items-center justify-center text-xs text-secondary-400">
+                  暂无即将发生的事件
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <button className="h-[60px] px-3 bg-white rounded-xl shadow-soft text-xs text-secondary-600 hover:text-primary-500 transition-colors flex flex-col items-center justify-center gap-0.5">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>周报</span>
+            </button>
+            <button className="h-[60px] px-3 bg-white rounded-xl shadow-soft text-xs text-secondary-600 hover:text-primary-500 transition-colors flex flex-col items-center justify-center gap-0.5">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <span>月报</span>
+            </button>
+            <button className="h-[60px] px-3 bg-white rounded-xl shadow-soft text-xs text-secondary-600 hover:text-primary-500 transition-colors flex flex-col items-center justify-center gap-0.5">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              <span>导入</span>
+            </button>
+            <button className="h-[60px] px-3 bg-white rounded-xl shadow-soft text-xs text-secondary-600 hover:text-primary-500 transition-colors flex flex-col items-center justify-center gap-0.5">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span>导出</span>
+            </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-4 space-y-4">
+            <div className="bg-white rounded-xl p-4">
+              <Calendar
+                selectedDate={selectedDate}
+                onDateSelect={handleDateSelect}
+                onDateContextMenu={handleDateContextMenu}
+                hasContent={hasContent}
+              />
+            </div>
+            <div className="bg-white rounded-xl shadow-soft p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold text-primary-600">事件</h2>
+                <button
+                  onClick={() => setIsEventDialogOpen(true)}
+                  className="px-3 py-1 text-sm bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                >
+                  添加
+                </button>
+              </div>
+              <div className="space-y-1.5">
+                {events.map((event) => (
+                  <div
+                    key={event.id}
+                    className="py-1.5 px-2 rounded-lg border border-secondary-200 flex items-center gap-2"
+                  >
+                    <div className={`w-1.5 h-1.5 rounded-full ${event.color || 'bg-secondary-400'}`} />
+                    <div className={`text-xs font-medium flex-1 ${getEventTextColorClass(event.color)}`}>
+                      {event.title}
+                    </div>
+                    <div className="flex items-center">
+                      <button
+                        onClick={() => handleEditEvent(event)}
+                        className="text-secondary-400 hover:text-primary-500 transition-colors p-0.5"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (isClient) {
+                            storage.deleteEvent(event.id);
+                            loadDayData();
+                            loadUpcomingEvents();
+                          }
+                        }}
+                        className="text-secondary-400 hover:text-red-500 transition-colors p-0.5"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {events.length === 0 && (
+                  <div className="text-center py-3 text-xs text-secondary-400">
+                    暂无事件
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="lg:col-span-8 space-y-4">
+            <div className="bg-white rounded-xl shadow-soft p-4">
+              <h2 className="text-lg font-semibold mb-3 text-primary-600">日记</h2>
+              <NoteEditor
+                date={selectedDate}
+                initialContent={note?.content || ''}
+                onSave={handleNoteSave}
+              />
+            </div>
+            <div className="bg-white rounded-xl shadow-soft p-4">
+              <h2 className="text-lg font-semibold mb-3 text-primary-600">待办事项</h2>
+              <TodoList
+                todos={todos}
+                selectedDate={selectedDate}
+                onAdd={handleAddTodo}
+                onToggle={handleToggleTodo}
+                onDelete={handleDeleteTodo}
+                onEdit={handleEditTodo}
+              />
+            </div>
+          </div>
         </div>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      <EventDialog
+        isOpen={isEventDialogOpen}
+        onClose={() => {
+          setIsEventDialogOpen(false);
+          setSelectedEvent(null);
+        }}
+        onSave={handleAddEvent}
+        date={selectedDate}
+        mode={selectedEvent ? 'edit' : 'add'}
+        initialEvent={selectedEvent}
+      />
     </div>
   );
 }
