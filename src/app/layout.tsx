@@ -8,8 +8,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "工作记录",
-  description: "一个简单的工作记录应用",
+  title: "饼干工作日记",
+  description: "像饼干一样，让记录工作变得香甜轻松",
 };
 
 export default function RootLayout({

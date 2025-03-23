@@ -283,6 +283,12 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white">
       <main className="container mx-auto px-4 py-6 max-w-6xl">
+        <h1 className="text-sm font-medium text-primary-600 text-center mb-6 flex items-center justify-center gap-1">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01M20 12a8 8 0 11-16 0 8 8 0 0116 0z" />
+          </svg>
+          饼干工作日记
+        </h1>
         <div className="flex gap-4 mb-6">
           <div className="max-h-[100px] bg-white rounded-xl shadow-soft p-2.5 overflow-y-auto flex-1 max-w-[600px]">
             <div className="space-y-0.5">
