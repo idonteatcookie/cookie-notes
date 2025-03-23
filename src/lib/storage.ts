@@ -23,6 +23,7 @@ export interface Event {
   date: string;
   color: string;
   createdAt: string;
+  status?: 'active' | 'cancelled' | 'postponed';
 }
 
 const isClient = typeof window !== 'undefined';
@@ -162,11 +163,26 @@ export function addEvent(title: string, date: Date, color: string): Event {
     date: formatDate(date),
     color,
     createdAt: new Date().toISOString(),
+    status: 'active'
   };
   const events = loadEvents();
   events.push(event);
   saveEvents(events);
   return event;
+}
+
+export function updateEventStatus(id: string, status: 'active' | 'cancelled' | 'postponed'): Event | null {
+  const events = loadEvents();
+  const index = events.findIndex(event => event.id === id);
+  if (index === -1) return null;
+
+  const updatedEvent = {
+    ...events[index],
+    status
+  };
+  events[index] = updatedEvent;
+  saveEvents(events);
+  return updatedEvent;
 }
 
 export function deleteEvent(id: string) {
