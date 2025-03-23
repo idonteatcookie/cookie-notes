@@ -6,9 +6,10 @@ import NoteEditor from './components/NoteEditor';
 import TodoList from './components/TodoList';
 import EventDialog from './components/EventDialog';
 import ReportDialog from './components/ReportDialog';
-import { format, differenceInDays, isToday, isTomorrow, isFuture, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { format, differenceInDays, isToday, isTomorrow, isFuture, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import * as storage from '../lib/storage';
+import { exportData, importData } from '../lib/exportImport';
 
 const getEventTextColorClass = (bgColorClass: string | undefined) => {
   if (!bgColorClass) return 'text-secondary-600';
@@ -245,6 +246,36 @@ export default function Home() {
     setIsMonthlyReportOpen(true);
   };
 
+  const handleExport = () => {
+    if (!isClient) return;
+    exportData();
+  };
+
+  const handleImport = () => {
+    // 创建文件输入元素
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.txt';
+    
+    fileInput.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        await importData(file);
+        loadDayData();
+        loadUpcomingEvents();
+        alert('导入成功！页面将刷新以显示导入的数据。');
+        window.location.reload();
+      } catch (error) {
+        console.error('导入失败:', error);
+        alert('导入失败，请确保文件格式正确。');
+      }
+    };
+    
+    fileInput.click();
+  };
+
   if (!isClient) {
     return <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white" />;
   }
@@ -306,13 +337,19 @@ export default function Home() {
               </svg>
               <span>月报</span>
             </button>
-            <button className="h-[60px] px-3 bg-white rounded-xl shadow-soft text-xs text-secondary-600 hover:text-primary-500 transition-colors flex flex-col items-center justify-center gap-0.5">
+            <button
+              onClick={handleImport}
+              className="h-[60px] px-3 bg-white rounded-xl shadow-soft text-xs text-secondary-600 hover:text-primary-500 transition-colors flex flex-col items-center justify-center gap-0.5"
+            >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
               <span>导入</span>
             </button>
-            <button className="h-[60px] px-3 bg-white rounded-xl shadow-soft text-xs text-secondary-600 hover:text-primary-500 transition-colors flex flex-col items-center justify-center gap-0.5">
+            <button
+              onClick={handleExport}
+              className="h-[60px] px-3 bg-white rounded-xl shadow-soft text-xs text-secondary-600 hover:text-primary-500 transition-colors flex flex-col items-center justify-center gap-0.5"
+            >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
