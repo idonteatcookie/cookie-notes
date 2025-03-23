@@ -9,7 +9,7 @@ import ReportDialog from './components/ReportDialog';
 import { format, differenceInDays, isToday, isTomorrow, isFuture, startOfWeek, endOfWeek, eachDayOfInterval, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import * as storage from '../lib/storage';
-import { exportData, importData } from '../lib/exportImport';
+import { exportData, importData, exportWeeklyReport, exportMonthlyReport } from '../lib/exportImport';
 
 const getEventTextColorClass = (bgColorClass: string | undefined) => {
   if (!bgColorClass) return 'text-secondary-600';

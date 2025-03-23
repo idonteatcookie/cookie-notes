@@ -1,6 +1,72 @@
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import * as storage from './storage';
+
+function generateExportContent(dates: Date[]): string {
+  const allNotes = storage.loadNotes();
+  const allTodos = storage.loadTodos();
+  const allEvents = storage.loadEvents();
+  
+  // 生成文本内容
+  let content = '工作记录导出\n\n';
+  
+  dates.forEach(date => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const formattedDate = format(date, 'yyyy年MM月dd日 EEEE', { locale: zhCN });
+    
+    // 获取当天的数据
+    const dayEvents = allEvents.filter(event => event.date === dateStr);
+    const dayTodos = allTodos.filter(todo => todo.date === dateStr);
+    const dayNote = allNotes.find(note => note.date === dateStr);
+    
+    // 如果这一天没有任何内容，就跳过
+    if (dayEvents.length === 0 && dayTodos.length === 0 && !dayNote?.content) {
+      return;
+    }
+    
+    content += `=== ${formattedDate} ===\n\n`;
+    
+    // 添加事件
+    if (dayEvents.length > 0) {
+      content += '【事件】\n';
+      dayEvents.forEach(event => {
+        content += `- ${event.title}\n`;
+      });
+      content += '\n';
+    }
+    
+    // 添加待办事项
+    if (dayTodos.length > 0) {
+      content += '【待办事项】\n';
+      dayTodos.forEach(todo => {
+        content += `- [${todo.completed ? '✓' : ' '}] ${todo.content}\n`;
+      });
+      content += '\n';
+    }
+    
+    // 添加日记
+    if (dayNote?.content) {
+      content += '【日记】\n';
+      content += dayNote.content + '\n\n';
+    }
+    
+    content += '----------------------------\n\n';
+  });
+  
+  return content;
+}
+
+function downloadContent(content: string, prefix: string) {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${prefix}_${format(new Date(), 'yyyy-MM-dd')}.txt`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 export function exportData(): void {
   // 获取所有数据
@@ -14,57 +80,31 @@ export function exportData(): void {
   allTodos.forEach(todo => allDates.add(todo.date));
   allEvents.forEach(event => allDates.add(event.date));
   
-  // 按日期排序
-  const sortedDates = Array.from(allDates).sort();
+  // 按日期排序并转换为Date对象
+  const sortedDates = Array.from(allDates)
+    .sort()
+    .map(dateStr => parseISO(dateStr));
   
-  // 生成文本内容
-  let content = '工作记录导出\n\n';
+  const content = generateExportContent(sortedDates);
+  downloadContent(content, '工作记录');
+}
+
+export function exportWeeklyReport(date: Date): void {
+  const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
+  const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
   
-  sortedDates.forEach(dateStr => {
-    const date = parseISO(dateStr);
-    const formattedDate = format(date, 'yyyy年MM月dd日 EEEE', { locale: zhCN });
-    content += `=== ${formattedDate} ===\n\n`;
-    
-    // 添加事件
-    const dayEvents = allEvents.filter(event => event.date === dateStr);
-    if (dayEvents.length > 0) {
-      content += '【事件】\n';
-      dayEvents.forEach(event => {
-        content += `- ${event.title}\n`;
-      });
-      content += '\n';
-    }
-    
-    // 添加待办事项
-    const dayTodos = allTodos.filter(todo => todo.date === dateStr);
-    if (dayTodos.length > 0) {
-      content += '【待办事项】\n';
-      dayTodos.forEach(todo => {
-        content += `- [${todo.completed ? '✓' : ' '}] ${todo.content}\n`;
-      });
-      content += '\n';
-    }
-    
-    // 添加日记
-    const dayNote = allNotes.find(note => note.date === dateStr);
-    if (dayNote && dayNote.content) {
-      content += '【日记】\n';
-      content += dayNote.content + '\n\n';
-    }
-    
-    content += '----------------------------\n\n';
-  });
+  const content = generateExportContent(days);
+  downloadContent(content, '周报');
+}
+
+export function exportMonthlyReport(date: Date): void {
+  const monthStart = startOfMonth(date);
+  const monthEnd = endOfMonth(date);
+  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
   
-  // 创建并下载文件
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `工作记录_${format(new Date(), 'yyyy-MM-dd')}.txt`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  const content = generateExportContent(days);
+  downloadContent(content, '月报');
 }
 
 export function importData(file: File): Promise<void> {

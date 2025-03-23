@@ -1,10 +1,10 @@
 'use client';
 
 import { useRef } from 'react';
-import html2canvas from 'html2canvas';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { Note, Todo, Event } from '@/lib/storage';
+import { exportWeeklyReport, exportMonthlyReport } from '@/lib/exportImport';
 
 interface ReportDialogProps {
   isOpen: boolean;
@@ -29,54 +29,11 @@ export default function ReportDialog({
 
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const handleDownload = async () => {
-    if (!contentRef.current) return;
-    
-    try {
-      // 创建一个临时容器
-      const tempContainer = document.createElement('div');
-      tempContainer.style.position = 'absolute';
-      tempContainer.style.left = '-9999px';
-      tempContainer.style.top = '-9999px';
-      tempContainer.style.width = '1024px'; // 固定宽度，避免布局问题
-      
-      // 克隆内容到临时容器
-      const clone = contentRef.current.cloneNode(true) as HTMLElement;
-      clone.style.width = '100%';
-      clone.style.height = 'auto';
-      clone.style.overflow = 'visible';
-      clone.style.padding = '32px';
-      clone.style.backgroundColor = '#ffffff';
-      tempContainer.appendChild(clone);
-      document.body.appendChild(tempContainer);
-
-      // 渲染为图片
-      const canvas = await html2canvas(tempContainer, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        windowWidth: 1024,
-        windowHeight: tempContainer.scrollHeight,
-        onclone: (clonedDoc) => {
-          const clonedContent = clonedDoc.querySelector('[data-report-content]');
-          if (clonedContent) {
-            (clonedContent as HTMLElement).style.overflow = 'visible';
-            (clonedContent as HTMLElement).style.height = 'auto';
-          }
-        }
-      });
-      
-      // 下载图片
-      const link = document.createElement('a');
-      link.download = `${type === 'week' ? '周报' : '月报'}_${format(date, 'yyyy-MM-dd')}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-
-      // 清理临时容器
-      document.body.removeChild(tempContainer);
-    } catch (error) {
-      console.error('导出图片失败:', error);
+  const handleDownload = () => {
+    if (type === 'week') {
+      exportWeeklyReport(date);
+    } else {
+      exportMonthlyReport(date);
     }
   };
 
@@ -117,12 +74,13 @@ export default function ReportDialog({
           <div className="flex items-center gap-2">
             <button
               onClick={handleDownload}
-              className="text-secondary-400 hover:text-primary-500 transition-colors p-2 rounded-lg hover:bg-secondary-50"
-              title="下载为图片"
+              className="px-3 py-1.5 text-sm bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors flex items-center gap-1.5"
+              title="下载为文本"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
+              <span>下载</span>
             </button>
             <button
               onClick={onClose}
