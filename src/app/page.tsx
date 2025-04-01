@@ -148,6 +148,15 @@ export default function Home() {
     loadDayData();
   };
 
+  const handleReorderTodos = (fromIndex: number, toIndex: number) => {
+    if (!isClient) return;
+    const newTodos = [...todos];
+    const [movedTodo] = newTodos.splice(fromIndex, 1);
+    newTodos.splice(toIndex, 0, movedTodo);
+    setTodos(newTodos);
+    storage.saveTodos(newTodos);
+  };
+
   const handleAddEvent = (event: Omit<storage.Event, 'id' | 'createdAt'>) => {
     if (!isClient) return;
     if (selectedEvent) {
@@ -525,6 +534,7 @@ export default function Home() {
                 onToggle={handleToggleTodo}
                 onDelete={handleDeleteTodo}
                 onEdit={handleEditTodo}
+                onReorder={handleReorderTodos}
               />
             </div>
           </div>
