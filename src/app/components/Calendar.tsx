@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   format,
   startOfMonth,
@@ -34,6 +34,12 @@ export default function Calendar({
   hasContent,
 }: CalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [showYearDropdown, setShowYearDropdown] = useState(false);
+  const [showMonthDropdown, setShowMonthDropdown] = useState(false);
+  const yearDropdownRef = useRef<HTMLDivElement>(null);
+  const monthDropdownRef = useRef<HTMLDivElement>(null);
+  const yearButtonRef = useRef<HTMLButtonElement>(null);
+  const monthButtonRef = useRef<HTMLButtonElement>(null);
 
   // 获取当月的所有日期，包括用于填充日历的上月和下月的日期
   const monthStart = startOfMonth(currentMonth);
@@ -49,6 +55,32 @@ export default function Calendar({
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   
+  const nextYear = () => {
+    const newDate = new Date(currentMonth);
+    newDate.setFullYear(currentMonth.getFullYear() + 1);
+    setCurrentMonth(newDate);
+  };
+  
+  const prevYear = () => {
+    const newDate = new Date(currentMonth);
+    newDate.setFullYear(currentMonth.getFullYear() - 1);
+    setCurrentMonth(newDate);
+  };
+  
+  const changeYear = (year: number) => {
+    const newDate = new Date(currentMonth);
+    newDate.setFullYear(year);
+    setCurrentMonth(newDate);
+    setShowYearDropdown(false);
+  };
+  
+  const changeMonth = (month: number) => {
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(month);
+    setCurrentMonth(newDate);
+    setShowMonthDropdown(false);
+  };
+  
   const goToToday = () => {
     const today = new Date();
     setCurrentMonth(today);
@@ -62,48 +94,193 @@ export default function Calendar({
     }
   }, [selectedDate]);
 
+  // 生成年份列表 (当前年份前后10年)
+  const currentYear = currentMonth.getFullYear();
+  const yearRange = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i);
+  
+  // 月份列表
+  const months = Array.from({ length: 12 }, (_, i) => i);
+
+  // 添加点击外部关闭下拉菜单的处理
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      // 年份下拉菜单
+      if (showYearDropdown && 
+          yearDropdownRef.current && 
+          yearButtonRef.current && 
+          !yearDropdownRef.current.contains(event.target as Node) &&
+          !yearButtonRef.current.contains(event.target as Node)) {
+        setShowYearDropdown(false);
+      }
+      
+      // 月份下拉菜单
+      if (showMonthDropdown && 
+          monthDropdownRef.current && 
+          monthButtonRef.current && 
+          !monthDropdownRef.current.contains(event.target as Node) &&
+          !monthButtonRef.current.contains(event.target as Node)) {
+        setShowMonthDropdown(false);
+      }
+    }
+    
+    // 添加事件监听器
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      // 清理事件监听器
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showYearDropdown, showMonthDropdown]);
+
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={prevMonth}
-          className="p-2 text-secondary-600 hover:text-primary-500 transition-colors"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+      <div className="flex items-center justify-between mb-4 relative">
+        <div className="flex items-center">
+          <button
+            onClick={prevYear}
+            className="p-2 text-secondary-600 hover:text-primary-500 transition-colors"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-        </button>
-        <h2 className="text-lg font-medium text-secondary-900">
-          {format(currentMonth, 'yyyy年MM月', { locale: zhCN })}
-        </h2>
-        <button
-          onClick={nextMonth}
-          className="p-2 text-secondary-600 hover:text-primary-500 transition-colors"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 19l-7-7 7-7 M18 19l-7-7 7-7"
+              />
+            </svg>
+          </button>
+          <button
+            onClick={prevMonth}
+            className="p-2 text-secondary-600 hover:text-primary-500 transition-colors"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-        </button>
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </button>
+        </div>
+        
+        <div className="flex items-center">
+          <div className="relative mr-1">
+            <button 
+              ref={yearButtonRef}
+              onClick={() => {
+                setShowYearDropdown(!showYearDropdown);
+                setShowMonthDropdown(false);
+              }}
+              className="text-lg font-medium text-secondary-900 hover:text-primary-500 transition-colors"
+            >
+              {format(currentMonth, 'yyyy年', { locale: zhCN })}
+            </button>
+            
+            {showYearDropdown && (
+              <div 
+                ref={yearDropdownRef}
+                className="absolute z-10 mt-1 bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-y-auto grid grid-cols-3 gap-2 p-2 w-48"
+              >
+                {yearRange.map(year => (
+                  <button
+                    key={year}
+                    onClick={() => changeYear(year)}
+                    className={`text-center py-2 px-2 rounded ${
+                      year === currentYear 
+                        ? 'bg-primary-500 text-white' 
+                        : 'hover:bg-primary-50'
+                    }`}
+                  >
+                    {year}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <div className="relative">
+            <button 
+              ref={monthButtonRef}
+              onClick={() => {
+                setShowMonthDropdown(!showMonthDropdown);
+                setShowYearDropdown(false);
+              }}
+              className="text-lg font-medium text-secondary-900 hover:text-primary-500 transition-colors"
+            >
+              {format(currentMonth, 'MM月', { locale: zhCN })}
+            </button>
+            
+            {showMonthDropdown && (
+              <div 
+                ref={monthDropdownRef}
+                className="absolute z-10 mt-1 bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-y-auto grid grid-cols-3 gap-2 p-2 w-48"
+              >
+                {months.map(month => (
+                  <button
+                    key={month}
+                    onClick={() => changeMonth(month)}
+                    className={`text-center py-2 px-2 rounded ${
+                      month === currentMonth.getMonth() 
+                        ? 'bg-primary-500 text-white' 
+                        : 'hover:bg-primary-50'
+                    }`}
+                  >
+                    {month + 1}月
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex items-center">
+          <button
+            onClick={nextMonth}
+            className="p-2 text-secondary-600 hover:text-primary-500 transition-colors"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+          <button
+            onClick={nextYear}
+            className="p-2 text-secondary-600 hover:text-primary-500 transition-colors"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 5l7 7-7 7 M6 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-7 gap-1 mb-2">
@@ -160,6 +337,15 @@ export default function Calendar({
             </button>
           );
         })}
+      </div>
+      
+      <div className="mt-2 text-center">
+        <button 
+          onClick={goToToday}
+          className="text-sm text-primary-500 hover:text-primary-600 transition-colors"
+        >
+          返回今天
+        </button>
       </div>
     </div>
   );
