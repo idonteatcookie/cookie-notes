@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { FiTrash2, FiEdit2, FiCopy } from 'react-icons/fi';
 import { Todo } from '@/lib/storage';
 import TodoDialog from './TodoDialog';
+import DeletePopover from './DeletePopover';
+import { Popover } from '@headlessui/react';
 
 interface TodoListProps {
   todos: Todo[];
@@ -127,13 +129,13 @@ export default function TodoList({
               >
                 <FiCopy className="w-3.5 h-3.5" />
               </button>
-              <button
-                onClick={() => onDelete(todo.id)}
-                className="text-secondary-400 hover:text-red-500 transition-colors p-1.5"
-                title="删除"
+              <DeletePopover
+                onConfirm={() => onDelete(todo.id)}
               >
-                <FiTrash2 className="w-3.5 h-3.5" />
-              </button>
+                <Popover.Button className="text-secondary-400 hover:text-red-500 transition-colors p-1.5">
+                  <FiTrash2 className="w-3.5 h-3.5" />
+                </Popover.Button>
+              </DeletePopover>
             </div>
           </div>
         ))}

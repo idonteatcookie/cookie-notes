@@ -10,6 +10,7 @@
     "deploy": "rm -rf node_modules/.cache && next build && next export && touch out/.nojekyll && git add out/ && git commit -m \"Deploy to gh-pages\" && git subtree push --prefix out origin gh-pages"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.0",
     "date-fns": "^2.30.0",
     "html2canvas": "^1.4.1",
     "next": "14.1.3",
