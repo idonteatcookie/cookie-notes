@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   format,
   startOfMonth,
@@ -54,6 +54,13 @@ export default function Calendar({
     setCurrentMonth(today);
     onDateSelect(today);
   };
+
+  // 当selectedDate改变时，如果不在当前显示的月份内，更新currentMonth
+  useEffect(() => {
+    if (!isSameMonth(selectedDate, currentMonth)) {
+      setCurrentMonth(selectedDate);
+    }
+  }, [selectedDate]);
 
   return (
     <div className="w-full">
