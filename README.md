@@ -2,6 +2,11 @@
 
 一个现代化的个人工作记录应用，用于管理日常工作中的事件、待办事项和日记。像饼干一样，让记录工作变得香甜轻松。
 
+请访问 https://idonteatcookie.github.io/cookie-notes/ 查看效果
+
+![image.png](images/image0.png)
+![image.png](images/image1.png)
+
 ## 功能概述
 
 ### 1. 日历视图
