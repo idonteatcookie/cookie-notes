@@ -150,11 +150,24 @@ export default function Home() {
 
   const handleReorderTodos = (fromIndex: number, toIndex: number) => {
     if (!isClient) return;
-    const newTodos = [...todos];
-    const [movedTodo] = newTodos.splice(fromIndex, 1);
-    newTodos.splice(toIndex, 0, movedTodo);
-    setTodos(newTodos);
+    // 获取所有 todos
+    const allTodos = storage.loadTodos();
+    // 获取当前日期
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    // 分离当前日期的 todos 和其他日期的 todos
+    const currentDateTodos = allTodos.filter(todo => todo.date === dateStr);
+    const otherDateTodos = allTodos.filter(todo => todo.date !== dateStr);
+    
+    // 重新排序当前日期的 todos
+    const [movedTodo] = currentDateTodos.splice(fromIndex, 1);
+    currentDateTodos.splice(toIndex, 0, movedTodo);
+    
+    // 合并所有 todos 并保存
+    const newTodos = [...otherDateTodos, ...currentDateTodos];
     storage.saveTodos(newTodos);
+    
+    // 更新当前视图
+    setTodos(currentDateTodos);
   };
 
   const handleAddEvent = (event: Omit<storage.Event, 'id' | 'createdAt'>) => {
